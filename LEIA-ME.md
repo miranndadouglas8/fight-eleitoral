@@ -34,29 +34,22 @@ Luta 3D de boxe controlada pelo público via Pix. Os dois lutadores nunca se der
 - **Luta parada**: o vermelho chama "Companheiro, manda o Pix pra eu dar uma vacina nele!" e o amarelo "Manda o Pix pra eu enfiar mortadela nesse ladrão!"
 - **Arquibancada**: esquerda com camisas e bandeiras vermelhas; direita com camisas amarelas e bandeiras do Brasil.
 
-## 1. Hospedar de graça na Vercel — recomendado
+## 1. No ar pelo GitHub Pages (grátis, sem servidor)
 
-O jogo e o painel ficam num endereço `https://....vercel.app`: não precisa instalar nada no PC e o painel abre no celular de qualquer lugar (até no 4G). O placar, os rounds e os totais ficam guardados num banco grátis (Upstash), então **não zeram** sozinhos.
+O jogo e o painel ficam em `https://SEU-USUARIO.github.io/fight-eleitoral/`. Como o GitHub Pages não roda servidor, funciona por **sala**:
 
-1. **GitHub** — crie uma conta grátis em https://github.com/signup.
-2. Clique em **New** (novo repositório), nome `fight-eleitoral`, marque **Private** e clique em **Create repository**.
-3. Na página do repositório, clique em **uploading an existing file**, arraste **todos os arquivos e as pastas `public`, `api` e `lib`** e clique em **Commit changes**.
-4. **Vercel** — crie uma conta grátis em https://vercel.com/signup escolhendo **Continue with GitHub** (plano **Hobby**).
-5. Na Vercel: **Add New → Project**, importe o repositório `fight-eleitoral`.
-   - Antes de clicar em Deploy, abra **Environment Variables** e crie `TOKEN_ADMIN` com uma **senha sua** (é a senha do Painel do Pix).
-   - Clique em **Deploy**.
-6. **Banco grátis**: no projeto, abra a aba **Storage → Create Database → Upstash (Redis)**, escolha o plano **Free** e conecte ao projeto `fight-eleitoral`. Depois vá em **Deployments**, clique nos **⋯** do último deploy e em **Redeploy** (para ele enxergar o banco).
-7. Pronto:
-   - Jogo (OBS): `https://SEU-PROJETO.vercel.app/?limpo`
-   - Painel do Pix (celular): `https://SEU-PROJETO.vercel.app/painel?token=SUA_SENHA`
+- O **código da sala** (`?sala=...` no fim do link) é o segredo. Use o **mesmo código** no jogo e no painel, e não mostre esse link na live: quem tiver o código consegue lançar Pix.
+- O painel manda cada Pix pela sala usando o **ntfy.sh** (serviço gratuito de mensagens, sem cadastro) e o jogo recebe na hora.
+- **Quem conta golpes, rounds e vitórias é o próprio jogo aberto no OBS**, e ele guarda tudo naquele computador: se o OBS recarregar a página, o placar continua.
 
-Se o jogo mostrar "SERVIDOR COM PROBLEMA: Banco não configurado", falta o passo 6 (ou o Redeploy depois dele).
+Links (troque `CODIGO` pelo código da sua sala):
+- Jogo (OBS): `https://SEU-USUARIO.github.io/fight-eleitoral/?sala=CODIGO&limpo`
+- Painel do Pix (celular): `https://SEU-USUARIO.github.io/fight-eleitoral/painel.html?sala=CODIGO`
 
-Como funciona na Vercel: o jogo e o painel consultam o servidor a cada ~0,7 s, então o anúncio e o golpe aparecem praticamente na hora.
-
-Limites do plano grátis:
-- O Upstash grátis tem um limite de comandos por mês. Com jogo + painel abertos, cada hora de live gasta uns 9 mil — dá para várias lives por mês. Acompanhe o uso no painel do Upstash e **feche o jogo e o painel quando a live acabar**.
-- Para mudar algo depois (frases, valores, nomes), edite o arquivo no GitHub: a Vercel publica a nova versão sozinha.
+Cuidados:
+- O jogo precisa estar **aberto no OBS** para os Pix contarem; o painel mostra "jogo conectado · placar ao vivo" quando está tudo certo.
+- Para mudar frases, valores, nomes ou o QR: edite o arquivo no GitHub (`config.json` ou `public/index.html`). O site atualiza sozinho em 1 ou 2 minutos.
+- No plano grátis do GitHub, o Pages só funciona com o repositório **público** (o código fica visível; nenhuma senha fica no repositório).
 
 ## 1b. Rodar no próprio PC (alternativa)
 
@@ -66,7 +59,7 @@ Limites do plano grátis:
 
 ## 2. Colocar na live (OBS)
 
-- Fonte **Navegador** com `https://SEU-PROJETO.vercel.app/?limpo` (ou `http://localhost:3000/?limpo` rodando no PC).
+- Fonte **Navegador** com o link do jogo com a sala (`https://SEU-USUARIO.github.io/fight-eleitoral/?sala=CODIGO&limpo`) — ou `http://localhost:3000/?limpo` rodando no PC.
 - **1920×1080** (horizontal) ou **1080×1920** (vertical); o jogo se ajusta sozinho.
 - Marque **"Controlar áudio via OBS"** para o som, as falas e o locutor irem para a live.
 
@@ -76,7 +69,7 @@ O QR Code dos dois lados é o seu Pix do Inter (sem valor fixo). Quem paga escol
 
 Como é o mesmo QR para os dois lados e a conta pessoa física do Inter não avisa nenhum programa quando um Pix cai, **você lança cada Pix no Painel**:
 
-1. Abra o **Painel do Pix** no celular: na Vercel é `https://SEU-PROJETO.vercel.app/painel?token=SUA_SENHA`; rodando no PC, use o link "no celular, mesmo Wi-Fi" que aparece na janela do servidor (se o Windows perguntar do firewall, permita em rede privada).
+1. Abra o **Painel do Pix** no celular com o link da sala (`.../painel.html?sala=CODIGO`). Rodando no PC, use o link "no celular, mesmo Wi-Fi" que aparece na janela do servidor (se o Windows perguntar do firewall, permita em rede privada).
 2. Caiu um Pix no app do Inter: digite o **valor**, o **primeiro nome** e toque no **lado** que a pessoa escreveu na mensagem.
 3. O painel mostra antes o que aquele valor libera, e depois o placar, o relógio e os últimos Pix.
 
