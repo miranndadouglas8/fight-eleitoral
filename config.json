@@ -1,0 +1,68 @@
+{
+  "porta": 3000,
+  "tokenWebhook": "",
+  "tokenAdmin": "",
+  "reaisPorSoco": 1,
+  "maxSocosPorPix": 30,
+  "niveis": [
+    5,
+    10,
+    20,
+    30,
+    50
+  ],
+  "duracaoRound": 60,
+  "mostrarNomeDoPagador": true,
+  "times": {
+    "vermelho": {
+      "nome": "PETISTAS",
+      "palavra": "PETISTA",
+      "especiais": [
+        "PAI DA MENTIRA",
+        "VACINA",
+        "COICE DO JUMENTO",
+        "CHUVA DE MORTADELA",
+        "CASA TRIPLEX"
+      ]
+    },
+    "amarelo": {
+      "nome": "BOLSONARISTAS",
+      "palavra": "BOLSONARISTA",
+      "especiais": [
+        "MULHERES DE BIQUÍNI",
+        "É SÓ UMA GRIPEZINHA",
+        "ARMINHA",
+        "METRALHADORA DE TINTA",
+        "BOMBARDEIO DE TINTA"
+      ]
+    }
+  },
+  "pix": {
+    "chave": "mirandadouglas8@gmail.com",
+    "mostrarChave": false,
+    "nomeRecebedor": "DOUGLAS MIRANDA",
+    "cidade": "VITORIA",
+    "vermelho": {
+      "txid": "VERMELHO",
+      "copiaECola": "00020101021126470014br.gov.bcb.pix0125mirandadouglas8@gmail.com5204000053039865802BR5915DOUGLAS MIRANDA6007VITORIA62070503***630483A9"
+    },
+    "amarelo": {
+      "txid": "AMARELO",
+      "copiaECola": "00020101021126470014br.gov.bcb.pix0125mirandadouglas8@gmail.com5204000053039865802BR5915DOUGLAS MIRANDA6007VITORIA62070503***630483A9"
+    }
+  },
+  "palavras": {
+    "vermelho": [
+      "vermelho",
+      "petista",
+      "pt",
+      "red"
+    ],
+    "amarelo": [
+      "amarelo",
+      "bolsonarista",
+      "bolso",
+      "yellow"
+    ]
+  }
+}
