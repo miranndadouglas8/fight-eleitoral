@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel do Pix — Fight Eleitoral</title>
+<style>
+:root{--red:#e3192f;--red-2:#ff5a4a;--yellow:#ffd21f;--bg:#12061f;--card:#1f0d38;--borda:#3c2266;--ink:#150a22;--texto:#fff;--suave:rgba(255,255,255,.72)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--texto);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 4px}
+.sub{color:var(--suave);font-size:14px;margin:0 0 12px;line-height:1.4}
+.status{font-size:13px;margin-bottom:12px;display:flex;align-items:center;gap:8px;color:var(--suave)}
+.status::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--dot,#888)}
+.placar{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;background:var(--card);border:1px solid var(--borda);border-radius:14px;padding:12px;margin-bottom:14px;text-align:center}
+.placar .t{font-size:12px;color:var(--suave)}
+.placar .n{font-size:30px;font-weight:800;line-height:1.1}
+.placar .v .n{color:var(--red-2)} .placar .a .n{color:var(--yellow)}
+.relogio{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+.relogio.urgente{color:var(--red-2)}
+label{display:block;font-size:13px;color:var(--suave);margin:12px 0 6px}
+input{width:100%;font:inherit;font-size:18px;padding:12px;border-radius:10px;border:1px solid var(--borda);background:#0d0418;color:#fff}
+#valor{font-size:28px;font-weight:800;text-align:center}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chips button{flex:1 0 auto;min-width:64px;padding:10px;font-size:16px;background:#2c1650;color:#fff;border:1px solid var(--borda)}
+.previa{margin-top:10px;font-size:15px;line-height:1.5;background:var(--card);border:1px solid var(--borda);border-radius:10px;padding:10px 12px;min-height:46px}
+.previa b.v{color:var(--red-2)} .previa b.a{color:var(--yellow)}
+.lados{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 6px}
+button{font:inherit;border:0;border-radius:12px;font-weight:800;cursor:pointer;touch-action:manipulation;line-height:1.15}
+button:active{transform:scale(.97)}
+button:disabled{opacity:.5}
+.lado{padding:22px 10px;font-size:20px}
+.lado small{display:block;font-weight:600;font-size:13px;opacity:.9;margin-top:4px}
+.lado.v{background:var(--red);color:#fff} .lado.a{background:var(--yellow);color:var(--ink)}
+.aviso{font-size:14px;margin-top:8px;min-height:20px}
+.aviso.ok{color:#22e06b} .aviso.erro{color:#ff6b6b}
+h3{font-size:15px;margin:18px 0 8px}
+.tabela{display:grid;grid-template-columns:auto 1fr 1fr;gap:4px 10px;font-size:13px;background:var(--card);border:1px solid var(--borda);border-radius:12px;padding:10px 12px}
+.tabela .v{color:var(--red-2)} .tabela .a{color:var(--yellow)}
+.log{background:var(--card);border:1px solid var(--borda);border-radius:12px;padding:6px 12px;font-size:14px;max-height:300px;overflow:auto}
+.log div{padding:7px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.log div:last-child{border-bottom:0}
+.log .vazio{color:var(--suave)}
+.log b.v{color:var(--red-2)} .log b.a{color:var(--yellow)}
+.perigo{width:100%;background:transparent;border:1px solid #ff6b6b;color:#ff6b6b;font-size:14px;padding:12px;margin-top:18px;font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>Painel do Pix — Fight Eleitoral</h1>
+  <p class="sub">Chegou um Pix no app do banco? Digite o valor e o nome, leia a mensagem (PETISTA ou BOLSONARISTA) e toque no lado. O golpe sai na hora no jogo.</p>
+  <div class="status" id="status">conectando…</div>
+
+  <div class="placar">
+    <div class="v"><div class="t" id="nV">PETISTAS</div><div class="n" id="vitV">0</div><div class="t">vitórias · <b id="gV">0</b> golpes no round</div></div>
+    <div><div class="t" id="round">ROUND 1</div><div class="relogio" id="relogio">60</div></div>
+    <div class="a"><div class="t" id="nA">BOLSONARISTAS</div><div class="n" id="vitA">0</div><div class="t">vitórias · <b id="gA">0</b> golpes no round</div></div>
+  </div>
+
+  <label for="valor">Valor do Pix (R$)</label>
+  <input id="valor" inputmode="decimal" autocomplete="off" placeholder="0,00">
+  <div class="chips" id="chips"></div>
+  <div class="previa" id="previa">Digite o valor para ver o que ele solta.</div>
+
+  <label for="nome">Primeiro nome de quem pagou (aparece e é falado na live)</label>
+  <input id="nome" maxlength="40" autocomplete="off" placeholder="Ex.: Maria">
+
+  <div class="lados">
+    <button class="lado v" data-lado="vermelho"><span id="bV">PETISTAS</span><small>lançar Pix</small></button>
+    <button class="lado a" data-lado="amarelo"><span id="bA">BOLSONARISTAS</span><small>lançar Pix</small></button>
+  </div>
+  <div class="aviso" id="aviso"></div>
+
+  <h3>Tabela de golpes (o que aparece na tela do jogo)</h3>
+  <div class="tabela" id="tabela"></div>
+
+  <h3>Últimos Pix</h3>
+  <div class="log" id="log"><div class="vazio">Nenhum Pix ainda.</div></div>
+
+  <button class="perigo" id="zerar">Zerar placar, rounds e totais</button>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const p = new URLSearchParams(location.search);
+let token = p.get('token') || '';
+try { token = token || localStorage.getItem('fight-token') || ''; } catch {}
+if (!token) token = (prompt('Cole o tokenAdmin (está no config.json e na janela do servidor):') || '').trim();
+try { localStorage.setItem('fight-token', token); } catch {}
+
+let JOGO = {
+  reaisPorSoco: 1, niveis: [5, 10, 20, 30, 50],
+  times: { vermelho: { nome: 'PETISTAS', especiais: [] }, amarelo: { nome: 'BOLSONARISTAS', especiais: [] } },
+};
+let rodada = null, vitorias = { vermelho: 0, amarelo: 0, empates: 0 };
+const reais = v => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const nomeDo = lado => JOGO.times[lado]?.nome || lado.toUpperCase();
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const hora = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+const valorDigitado = () => { const s = $('valor').value.trim(); return parseFloat(s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s); };
+const nivelDoValor = v => JOGO.niveis.reduce((n, minimo, i) => (v >= minimo ? i + 1 : n), 0);
+const especial = (lado, n) => JOGO.times[lado]?.especiais?.[n - 1] || `especial ${n}`;
+
+function aviso(texto, ok) { const a = $('aviso'); a.textContent = texto; a.className = 'aviso ' + (ok ? 'ok' : 'erro'); }
+
+function previa() {
+  const v = valorDigitado(), el = $('previa');
+  if (!(v > 0)) { el.textContent = 'Digite o valor para ver o que ele solta.'; return; }
+  const socos = Math.floor(v / JOGO.reaisPorSoco), n = nivelDoValor(v);
+  el.innerHTML = `${reais(v)} = <b>${socos} soco${socos === 1 ? '' : 's'}</b>` +
+    (n ? ` + especial:<br><b class="v">${esc(nomeDo('vermelho'))}: ${esc(especial('vermelho', n))}</b> · <b class="a">${esc(nomeDo('amarelo'))}: ${esc(especial('amarelo', n))}</b>` : '');
+}
+
+async function enviar(lado, botao) {
+  const valor = valorDigitado();
+  if (!(valor > 0)) return aviso('Digite o valor do Pix primeiro.', false);
+  const nome = $('nome').value.trim();
+  botao.disabled = true;
+  try {
+    const r = await fetch('/api/simular?token=' + encodeURIComponent(token), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lado, valor, nome }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 401) throw new Error('token inválido — confira o tokenAdmin');
+    if (!r.ok || !j.ok) throw new Error(j.erro || j.motivo || ('erro ' + r.status));
+    $('nome').value = ''; $('valor').value = ''; previa();
+    aviso(`Lançado: ${reais(valor)} → ${nomeDo(lado)}`, true);
+    if (navigator.vibrate) navigator.vibrate(40);
+    $('valor').focus();
+  } catch (e) { aviso('Não foi: ' + e.message, false); }
+  finally { setTimeout(() => botao.disabled = false, 350); }
+}
+
+document.querySelectorAll('button[data-lado]').forEach(b => b.addEventListener('click', () => enviar(b.dataset.lado, b)));
+$('valor').addEventListener('input', previa);
+$('zerar').addEventListener('click', async () => {
+  if (!confirm('Zerar vitórias, rounds e o total arrecadado? Não dá para desfazer.')) return;
+  const r = await fetch('/api/zerar?token=' + encodeURIComponent(token), { method: 'POST' });
+  aviso(r.ok ? 'Tudo zerado.' : 'Não consegui zerar (token?)', r.ok);
+});
+
+function textos() {
+  $('nV').textContent = $('bV').textContent = nomeDo('vermelho');
+  $('nA').textContent = $('bA').textContent = nomeDo('amarelo');
+  const chips = $('chips'); chips.innerHTML = '';
+  [1, 2, ...JOGO.niveis].forEach(v => {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = 'R$ ' + v;
+    b.addEventListener('click', () => { $('valor').value = String(v); previa(); });
+    chips.appendChild(b);
+  });
+  const t = $('tabela');
+  t.innerHTML = `<b>Valor</b><b class="v">${esc(nomeDo('vermelho'))}</b><b class="a">${esc(nomeDo('amarelo'))}</b>` +
+    `<span>cada R$ ${JOGO.reaisPorSoco}</span><span>1 soco</span><span>1 soco</span>` +
+    JOGO.niveis.map((v, i) => `<span>R$ ${v}+</span><span class="v">${esc(especial('vermelho', i + 1))}</span><span class="a">${esc(especial('amarelo', i + 1))}</span>`).join('');
+  previa();
+}
+function placar() {
+  $('vitV').textContent = vitorias.vermelho; $('vitA').textContent = vitorias.amarelo;
+  if (rodada) { $('round').textContent = 'ROUND ' + rodada.numero; $('gV').textContent = rodada.golpes?.vermelho ?? 0; $('gA').textContent = rodada.golpes?.amarelo ?? 0; }
+}
+function registrar(html) {
+  const log = $('log'); log.querySelector('.vazio')?.remove();
+  const d = document.createElement('div'); d.innerHTML = html; log.prepend(d);
+  while (log.children.length > 30) log.lastChild.remove();
+}
+function aplicarRodada(r) { if (r) rodada = { ...r, fimLocal: r.fim + (Date.now() - (r.agora || Date.now())) }; placar(); }
+
+// consulta o servidor a cada segundo (funciona igual no PC e na Vercel)
+let seq = 0;
+async function consultar(primeira) {
+  let ok = false;
+  try {
+    const r = await fetch(primeira ? '/api/estado' : `/api/eventos?desde=${seq}`, { cache: 'no-store' });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.erro || 'erro ' + r.status);
+    if (primeira) { seq = j.seq || 0; tratar(j, j.agora); }
+    else { for (const m of j.eventos) tratar(m, j.agora); seq = j.seq; }
+    ok = true;
+    $('status').textContent = 'conectado ao jogo'; $('status').style.setProperty('--dot', '#22e06b');
+  } catch (e) {
+    $('status').textContent = 'sem conexão com o servidor — ' + e.message; $('status').style.setProperty('--dot', '#ffb020');
+  }
+  setTimeout(() => consultar(primeira && !ok), ok ? 1000 : 2500);
+}
+function tratar(m, agora) {
+  if (m.rodada) m.rodada = { ...m.rodada, agora };
+  if (m.tipo === 'estado') {
+    JOGO = { ...JOGO, ...m }; if (m.vitorias) vitorias = m.vitorias;
+    aplicarRodada(m.rodada); textos();
+  } else if (m.tipo === 'pix') {
+    aplicarRodada(m.rodada);
+    const cls = m.lado === 'vermelho' ? 'v' : 'a';
+    const oque = `${m.socos} soco${m.socos === 1 ? '' : 's'}` + (m.nivel ? ` + ${especial(m.lado, m.nivel)}` : '');
+    registrar(`${hora()} · ${esc(m.nome || '—')} · ${reais(m.valor)} → <b class="${cls}">${esc(nomeDo(m.lado))}</b> (${esc(oque)})`);
+  } else if (m.tipo === 'fimRound') {
+    vitorias = m.vitorias; aplicarRodada(m.rodada);
+    const r = m.resultado, g = r.golpes || { vermelho: 0, amarelo: 0 };
+    const txt = !r.vencedor ? 'ninguém atacou (não conta)' : r.vencedor === 'empate' ? 'EMPATE' : `<b class="${r.vencedor === 'vermelho' ? 'v' : 'a'}">${esc(nomeDo(r.vencedor))}</b> venceu`;
+    registrar(`${hora()} · <b>Fim do round ${r.numero}</b>: ${txt} (${g.vermelho} × ${g.amarelo} golpes)`);
+  }
+}
+consultar(true);
+setInterval(() => {
+  if (!rodada) return;
+  const s = Math.max(0, Math.ceil((rodada.fimLocal - Date.now()) / 1000));
+  $('relogio').textContent = s; $('relogio').classList.toggle('urgente', s <= 10);
+}, 250);
+textos();
+</script>
+</body>
+</html>
