@@ -307,6 +307,8 @@ const JOGO = {
 
 const params = new URLSearchParams(location.search);
 const LIMPO = params.has('limpo');
+// ?sala=CODIGO → modo sem servidor (GitHub Pages): os Pix chegam do Painel pelo ntfy.sh
+const SALA = (params.get('sala') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 60);
 const ADMIN = params.get('admin') || '';
 const $ = id => document.getElementById(id);
 
@@ -2011,6 +2013,7 @@ function fimDoRound(res) {
     TREINADORES[res.vencedor].reagir('comemora', 3.5); TREINADORES[v.oponente.lado].reagir('lamenta', 3);
     const vit = $('vitorias'); vit.classList.remove('pop'); void vit.offsetWidth; vit.classList.add('pop');
   }
+  if (Rede.modo === 'sala') Sala.depoisDoRound(res);
 }
 
 function mostrarRanking(res) {
@@ -2089,6 +2092,7 @@ function pixLocal(lado, valor, nome = pick(NOMES)) {
     return;
   }
   receberPix({ lado, valor, ...converter(lado, valor), nome });
+  if (Rede.modo === 'sala') { Sala.salvar(); Sala.publicar(); }
 }
 
 const Demo = {
@@ -2110,9 +2114,10 @@ const Status = {
   atualizar() {
     const el = $('status');
     if (LIMPO) { el.style.display = 'none'; return; }
-    let t = Rede.modo === 'servidor' ? (Rede.online ? 'AO VIVO · recebendo Pix' : 'reconectando ao servidor…') : Rede.erro ? `SERVIDOR COM PROBLEMA: ${Rede.erro}` : 'MODO LOCAL';
-    let c = Rede.modo === 'servidor' ? (Rede.online ? '#22e06b' : '#ffb020') : Rede.erro ? '#ff4d4d' : '#8a8aa0';
-    if (Demo.ligado) { t += ' · DEMO'; c = Rede.modo === 'servidor' && Rede.online ? c : '#c084fc'; }
+    const conectado = Rede.modo === 'servidor' || Rede.modo === 'sala';
+    let t = conectado ? (Rede.online ? 'AO VIVO · recebendo Pix' : Rede.modo === 'sala' ? 'conectando à sala…' : 'reconectando ao servidor…') : Rede.erro ? `SERVIDOR COM PROBLEMA: ${Rede.erro}` : 'MODO LOCAL';
+    let c = conectado ? (Rede.online ? '#22e06b' : '#ffb020') : Rede.erro ? '#ff4d4d' : '#8a8aa0';
+    if (Demo.ligado) { t += ' · DEMO'; c = conectado && Rede.online ? c : '#c084fc'; }
     el.textContent = t; el.style.setProperty('--dot', c);
   },
 };
@@ -2120,14 +2125,16 @@ const Status = {
 const Rede = {
   modo: 'local', online: false,
   async iniciar() {
-    if (location.protocol !== 'file:') {
+    if (SALA) await Sala.iniciar();
+    else if (location.protocol !== 'file:') {
       try {
         const r = await fetch('/api/estado', { cache: 'no-store' });
         const j = await r.json().catch(() => null);
+        if (r.status === 404 || (r.ok && !j)) throw Object.assign(new Error('sem servidor'), { semServidor: true });
         if (!r.ok || !j) throw new Error(j?.erro || `erro ${r.status}`);
         this.aplicarEstado(j); this.seq = j.seq || 0;
         this.modo = 'servidor'; this.consultar();
-      } catch (e) { console.info('Sem servidor de Pix — rodando local.', e); this.erro = e.message; }
+      } catch (e) { console.info('Sem servidor de Pix — rodando local.', e); if (!e.semServidor) this.erro = e.message; }
     }
     if (this.modo === 'local') { desenharQR($('qrV'), ''); desenharQR($('qrA'), ''); }
     Demo.alternar(params.has('demo') || (this.modo === 'local' && !this.erro && !params.has('semdemo')));
@@ -2165,6 +2172,100 @@ const Rede = {
     if (m.tipo === 'pix') receberPix(m);
     else if (m.tipo === 'estado') this.aplicarEstado(m);
     else if (m.tipo === 'fimRound') { Object.assign(PLACAR.vitorias, m.vitorias); fimDoRound(m.resultado); aplicarRodada(m.rodada); }
+  },
+};
+
+// ---------------------------------------------------------------------
+// Modo sala (GitHub Pages, sem servidor): o Painel do Pix manda cada Pix por um canal
+// grátis do ntfy.sh e este jogo conta golpes, rounds e vitórias — e guarda tudo no navegador do OBS.
+// O código da sala (?sala=...) é o segredo: só quem tem o link do painel consegue mandar Pix.
+// ---------------------------------------------------------------------
+const NTFY = 'https://ntfy.sh';
+const primeiroNome = n => { const s = String(n || '').trim().split(/\s+/)[0] || ''; return s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : ''; };
+const Sala = {
+  vistos: new Set(), ultimoId: '', ultimoPix: null, ultimoResultado: null, inicio: Date.now(), timer: 0,
+  chave: () => 'fight-eleitoral:' + SALA,
+  async iniciar() {
+    Rede.modo = 'sala';
+    try { const r = await fetch('../config.json', { cache: 'no-store' }); if (r.ok) this.aplicarConfig(await r.json()); } catch {}
+    this.carregar();
+    this.ouvir();
+    this.publicar();
+    setInterval(() => this.salvar(), 5000);
+  },
+  // mesmo config.json do repositório: nomes, valores, especiais e o QR Code
+  aplicarConfig(c) {
+    if (c.reaisPorSoco) JOGO.reaisPorSoco = c.reaisPorSoco;
+    if (c.maxSocosPorPix) JOGO.maxSocosPorPix = c.maxSocosPorPix;
+    if (Array.isArray(c.niveis)) JOGO.niveis = c.niveis;
+    if (c.duracaoRound) JOGO.duracaoRound = c.duracaoRound;
+    if (c.times) for (const k of ['vermelho', 'amarelo']) if (c.times[k]) Object.assign(JOGO[k], c.times[k]);
+    const p = c.pix || {};
+    Rede.aplicarEstado({ qr: { vermelho: p.vermelho?.copiaECola || '', amarelo: p.amarelo?.copiaECola || '' }, chave: p.mostrarChave ? p.chave : '' });
+  },
+  ouvir() {
+    const desde = this.ultimoId ? `?since=${encodeURIComponent(this.ultimoId)}` : '';
+    const es = new EventSource(`${NTFY}/${SALA}/sse${desde}`);
+    es.addEventListener('open', () => { Rede.online = true; Status.atualizar(); });
+    es.onmessage = ev => {
+      let d; try { d = JSON.parse(ev.data); } catch { return; }
+      if (d.event !== 'message') return;
+      this.ultimoId = d.id; Rede.online = true; Status.atualizar();
+      if (d.time * 1000 < this.inicio - 120000) return; // ao reabrir o jogo, recupera só os últimos 2 minutos
+      let m; try { m = JSON.parse(d.message); } catch { return; }
+      this.comando(m);
+    };
+    es.onerror = () => {
+      Rede.online = false; Status.atualizar(); es.close();
+      clearTimeout(this.reconectar); this.reconectar = setTimeout(() => this.ouvir(), 2000);
+    };
+  },
+  comando(m) {
+    if (m.tipo === 'pedirPlacar') return this.publicar();
+    if (!m.id || this.vistos.has(m.id)) return; // o mesmo Pix nunca conta duas vezes
+    this.vistos.add(m.id);
+    if (m.tipo === 'pix') {
+      const lado = m.lado === 'vermelho' || m.lado === 'amarelo' ? m.lado : null, valor = Number(m.valor);
+      if (!lado || !(valor > 0) || valor > 100000) return;
+      const nome = primeiroNome(m.nome).slice(0, 20);
+      receberPix({ lado, valor, ...converter(lado, valor), nome });
+      this.ultimoPix = { id: m.id, lado, valor, nome };
+    } else if (m.tipo === 'zerar') {
+      for (const k of ['vermelho', 'amarelo']) { TOTAIS[k].valor = 0; TOTAIS[k].pix = 0; sobraLocal[k] = 0; }
+      Object.assign(PLACAR.vitorias, { vermelho: 0, amarelo: 0, empates: 0 });
+      aplicarRodada({ numero: 0, fim: 0, golpes: { vermelho: 0, amarelo: 0 }, pix: { vermelho: 0, amarelo: 0 }, valor: { vermelho: 0, amarelo: 0 }, maior: null });
+      aplicarRodada({ numero: 1, fim: Date.now() + JOGO.duracaoRound * 1000, golpes: { vermelho: 0, amarelo: 0 }, pix: { vermelho: 0, amarelo: 0 }, valor: { vermelho: 0, amarelo: 0 }, maior: null });
+      this.ultimoResultado = null; HUD.cache = {};
+    } else return;
+    this.salvar(); this.publicar();
+  },
+  depoisDoRound(res) { this.ultimoResultado = { ...res, quando: Date.now() }; this.salvar(); this.publicar(); },
+  // o painel acompanha o placar por um segundo canal (sala-placar)
+  publicar() { clearTimeout(this.timer); this.timer = setTimeout(() => this.enviarPlacar(), 800); },
+  enviarPlacar() {
+    const msg = {
+      tipo: 'placar', numero: PLACAR.numero, restante: Math.max(0, PLACAR.fim - Date.now()),
+      golpes: PLACAR.golpes, pix: PLACAR.pix, maior: PLACAR.maior, vitorias: PLACAR.vitorias, totais: TOTAIS,
+      resultado: this.ultimoResultado, ultimoPix: this.ultimoPix,
+    };
+    fetch(`${NTFY}/${SALA}-placar`, { method: 'POST', body: JSON.stringify(msg) }).catch(() => {});
+  },
+  salvar() {
+    try {
+      localStorage.setItem(this.chave(), JSON.stringify({
+        numero: PLACAR.numero, fim: PLACAR.fim, golpes: PLACAR.golpes, pix: PLACAR.pix, valor: PLACAR.valor, maior: PLACAR.maior,
+        vitorias: PLACAR.vitorias, totais: TOTAIS, sobra: sobraLocal, vistos: [...this.vistos].slice(-300), ultimoId: this.ultimoId,
+      }));
+    } catch {}
+  },
+  carregar() {
+    let d = null; try { d = JSON.parse(localStorage.getItem(this.chave()) || 'null'); } catch {}
+    if (!d) return;
+    Object.assign(PLACAR.vitorias, d.vitorias);
+    for (const k of ['vermelho', 'amarelo']) { Object.assign(TOTAIS[k], d.totais?.[k]); sobraLocal[k] = d.sobra?.[k] || 0; }
+    this.vistos = new Set(d.vistos || []); this.ultimoId = d.ultimoId || '';
+    if (d.fim > Date.now()) aplicarRodada({ numero: d.numero, fim: d.fim, golpes: d.golpes, pix: d.pix, valor: d.valor, maior: d.maior });
+    else aplicarRodada({ numero: (d.numero || 0) + 1, fim: Date.now() + JOGO.duracaoRound * 1000, golpes: { vermelho: 0, amarelo: 0 }, pix: { vermelho: 0, amarelo: 0 }, valor: { vermelho: 0, amarelo: 0 }, maior: null });
   },
 };
 
